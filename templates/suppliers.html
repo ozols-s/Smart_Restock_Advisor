@@ -1,0 +1,101 @@
+{% extends "base.html" %}
+
+{% block title %}Управление поставщиками - Smart Restock{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/suppliers.css') }}">
+{% endblock %}
+
+{% block content %}
+<div class="suppliers-container">
+    <!-- Заголовок и поиск -->
+    <div class="suppliers-header">
+        <div class="header-title">
+            <h1>Управление поставщиками</h1>
+            <p>Поиск и управление поставщиками товаров</p>
+        </div>
+        <div class="header-controls">
+            <div class="search-box">
+                <input type="text" class="search-input" placeholder="Найти поставщика">
+            </div>
+            <button class="btn btn-add">
+                <i class="fas fa-plus"></i>
+                Добавить поставщика
+            </button>
+        </div>
+    </div>
+
+    <!-- Фильтры -->
+    <div class="filters-row">
+        <select class="filter-select">
+            <option>Все поставщики</option>
+            <option>Активные</option>
+            <option>Неактивные</option>
+        </select>
+        <select class="filter-select">
+            <option>Сортировка: По названию</option>
+            <option>По дате добавления</option>
+            <option>По рейтингу</option>
+        </select>
+        <select class="filter-select">
+            <option>Все товары</option>
+            <option>Только с товарами</option>
+        </select>
+    </div>
+
+    {% if suppliers %}
+    <!-- Таблица поставщиков -->
+    <table class="suppliers-table">
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Название</th>
+                <th>Контактное лицо</th>
+                <th>Телефон</th>
+                <th>Email</th>
+                <th>Адрес</th>
+                <th>Статус</th>
+                <!-- Убрана колонка "Действия" -->
+            </tr>
+        </thead>
+        <tbody>
+            {% for supplier in suppliers %}
+            <tr>
+                <td>{{ supplier.id }}</td>
+                <td><strong>{{ supplier.name }}</strong></td>
+                <td>{{ supplier.contact_person or 'Не указано' }}</td>
+                <td>{{ supplier.phone or 'Не указан' }}</td>
+                <td>{{ supplier.email or 'Не указан' }}</td>
+                <td>{{ supplier.address[:30] + '...' if supplier.address and supplier.address|length > 30 else supplier.address or 'Не указан' }}</td>
+                <td>
+                    <span class="status-badge status-active">
+                        Активен
+                    </span>
+                </td>
+                <!-- Убраны кнопки действий -->
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <!-- Сообщение, если нет поставщиков -->
+    <div class="empty-state">
+        <i class="fas fa-truck"></i>
+        <h3>Нет поставщиков</h3>
+        <p>Добавьте первого поставщика, чтобы начать работу</p>
+        <button class="btn btn-add" style="margin-top: 15px;">
+            <i class="fas fa-plus"></i>
+            Добавить первого поставщика
+        </button>
+    </div>
+    {% endif %}
+
+    <!-- Статистика -->
+    <div class="stats-footer">
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/suppliers.js') }}"></script>
+{% endblock %}

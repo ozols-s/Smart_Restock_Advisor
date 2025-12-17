@@ -1,0 +1,500 @@
+{% extends "base.html" %}
+
+{% block title %}Главная - Smart Restock Advisor{% endblock %}
+
+{% block extra_css %}
+<style>
+    .status-critical {
+        background-color: rgba(231, 76, 60, 0.1) !important;
+        border-left: 4px solid var(--danger) !important;
+    }
+    .status-warning {
+        background-color: rgba(243, 156, 18, 0.1) !important;
+        border-left: 4px solid var(--warning) !important;
+    }
+    .status-normal {
+        background-color: rgba(46, 204, 113, 0.1) !important;
+        border-left: 4px solid var(--success) !important;
+    }
+    .priority-high {
+        color: var(--danger);
+        font-weight: bold;
+    }
+    .priority-medium {
+        color: var(--warning);
+        font-weight: bold;
+    }
+    .priority-normal {
+        color: var(--secondary);
+        font-weight: bold;
+    }
+    .action-btn {
+        padding: 6px 12px;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 12px;
+        transition: all 0.3s;
+    }
+    .btn-order {
+        background-color: var(--secondary);
+        color: white;
+    }
+    .btn-order:hover {
+        background-color: #27ae60;
+    }
+    .btn-skip {
+        background-color: #95a5a6;
+        color: white;
+    }
+    .btn-skip:hover {
+        background-color: #7f8c8d;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+
+    <!-- Header -->
+    <div class="header">
+        <div class="page-title">
+            <h1>Управление складскими остатками</h1>
+        </div>
+        <div class="header-actions">
+            <select class="warehouse-select">
+                <option>Основной склад</option>
+            </select>
+            <button class="btn btn-primary" onclick="refreshData()">
+                <i class="fas fa-sync-alt"></i> Обновить данные
+            </button>
+            <div class="user-profile">
+                <div class="user-avatar">ЯИ</div>
+                <span>Яхонтов Илья</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- KPI Cards -->
+    <div class="kpi-cards">
+        <div class="kpi-card">
+            <div class="kpi-header">
+                <div class="kpi-title">Товары в риске</div>
+                <div class="kpi-icon" style="background: rgba(231, 76, 60, 0.2); color: var(--danger);">
+                    <i class="fas fa-exclamation-triangle"></i>
+                </div>
+            </div>
+            <div class="kpi-value">{{ kpi_data.at_risk_items + kpi_data.critical_items }} SKU</div>
+            <div class="kpi-trend {% if kpi_data.total_recommended > 0 %}trend-up{% else %}trend-down{% endif %}">
+                {% if kpi_data.total_recommended > 0 %}
+                <i class="fas fa-arrow-up"></i> {{ kpi_data.total_recommended }} рекомендаций
+                {% else %}
+                <i class="fas fa-check"></i> Нет рисков
+                {% endif %}
+            </div>
+        </div>
+        <div class="kpi-card">
+            <div class="kpi-header">
+                <div class="kpi-title">Точность прогноза</div>
+                <div class="kpi-icon" style="background: rgba(46, 204, 113, 0.2); color: var(--success);">
+                    <i class="fas fa-bullseye"></i>
+                </div>
+            </div>
+            <div class="kpi-value">{{ kpi_metrics.forecast_accuracy }}</div>
+            <div class="kpi-trend trend-up">
+                <i class="fas fa-arrow-up"></i> 0% за месяц
+            </div>
+        </div>
+        <div class="kpi-card">
+            <div class="kpi-header">
+                <div class="kpi-title">Упущенный доход</div>
+                <div class="kpi-icon" style="background: rgba(243, 156, 18, 0.2); color: var(--warning);">
+                    <i class="fas fa-money-bill-wave"></i>
+                </div>
+            </div>
+            <div class="kpi-value">{{ kpi_metrics.lost_revenue }}</div>
+            <div class="kpi-trend trend-down">
+                <i class="fas fa-arrow-down"></i> 28% снижение
+            </div>
+        </div>
+        <div class="kpi-card">
+            <div class="kpi-header">
+                <div class="kpi-title">Ср. время поставки</div>
+                <div class="kpi-icon" style="background: rgba(52, 152, 219, 0.2); color: var(--secondary);">
+                    <i class="fas fa-truck"></i>
+                </div>
+            </div>
+            <div class="kpi-value">{{ kpi_metrics.delivery_time }}</div>
+            <div class="kpi-trend trend-up">
+                <i class="fas fa-arrow-up"></i> 0.3 дн. с прошлого месяца
+            </div>
+        </div>
+    </div>
+
+    <!-- Основная сетка контента -->
+    <div class="content-grid">
+        <div class="content-left">
+            <div class="chart-container">
+                <div class="chart-header">
+                    <div class="chart-title">Прогноз спроса и остатков</div>
+                    <div class="chart-actions">
+                        <select class="chart-filter">
+                            <option>Все категории</option>
+                        </select>
+                        <select class="chart-filter">
+                            <option>7 дней</option>
+                            <option>14 дней</option>
+                            <option>30 дней</option>
+                        </select>
+                    </div>
+                </div>
+                <canvas id="forecastChart"></canvas>
+            </div>
+        </div>
+
+        <div class="content-right">
+            <div class="context-panel">
+                <div class="context-header">Факторы влияния</div>
+
+                <div class="context-item">
+                    <div class="context-item-title">
+                        <div class="context-item-icon weather-icon">
+                            <i class="fas fa-cloud-sun-rain"></i>
+                        </div>
+                        <span>Погода</span>
+                    </div>
+                    <div class="context-item-content">
+                        На следующей неделе: +4°C, облачно
+                    </div>
+                </div>
+
+                <div class="context-item">
+                    <div class="context-item-title">
+                        <div class="context-item-icon data-icon">
+                            <i class="fas fa-database"></i>
+                        </div>
+                        <span>Статус данных</span>
+                    </div>
+                    <div class="context-item-content">
+                        Прогноз на основе ML модели. Точность: {{ kpi_metrics.forecast_accuracy }}
+                    </div>
+                </div>
+
+                <div class="context-item">
+                    <div class="context-item-title">
+                        <div class="context-item-icon summary-icon">
+                            <i class="fas fa-clipboard-list"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Таблица рекомендаций -->
+    <div class="table-full-width">
+        <div class="table-container">
+            <div class="table-header">
+                <div class="chart-title">Топ 10 рекомендуемых заказов</div>
+                <div>
+                    <button class="btn btn-secondary" onclick="refreshRecommendations()">
+                        <i class="fas fa-redo"></i> Пересчитать
+                    </button>
+                    <button class="btn btn-primary" onclick="exportToExcel()">
+                        <i class="fas fa-download"></i> Экспорт
+                    </button>
+                </div>
+            </div>
+            <table>
+                <thead>
+                    <tr>
+                        <th>SKU</th>
+                        <th>Тек. остаток</th>
+                        <th>В пути</th>
+                        <th>Прогноз спроса ({{ business_params.lead_time if business_params else 3 }} дн.)</th>
+                        <th>Дата исчерпания</th>
+                        <th>Рекомендуемый заказ</th>
+                        <th>Статус</th>
+                        <th>Приоритет</th>
+                        <th>Обоснование</th>
+                        <th>Действие</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% if recommendations %}
+                        {% for rec in recommendations %}
+                        <tr class="
+                            {% if rec.status == 'КРИТИЧЕСКИЙ ДЕФИЦИТ' %}status-critical
+                            {% elif rec.status == 'НИЖЕ ТОЧКИ ЗАКАЗА' %}status-warning
+                            {% elif rec.status == 'ПЛАНОВЫЙ ЗАКАЗ' %}status-normal
+                            {% endif %}">
+                            <td><strong>{{ rec.SKU }}</strong></td>
+
+                            <!-- Текущий остаток -->
+                            <td>
+                                {% set current_stock = rec.current_stock|default(0) %}
+                                {% if current_stock is number %}
+                                    {{ current_stock|round|int }} шт.
+                                {% else %}
+                                    {{ current_stock|float|round|int }} шт.
+                                {% endif %}
+                            </td>
+
+                            <!-- Заказы в пути -->
+                            <td>
+                                {% set orders_in_transit = rec.orders_in_transit|default(0) %}
+                                {% if orders_in_transit is number %}
+                                    {{ orders_in_transit|round|int }} шт.
+                                {% else %}
+                                    {{ orders_in_transit|float|round|int }} шт.
+                                {% endif %}
+                            </td>
+
+                            <!-- Прогноз спроса -->
+                            <td>
+                                {% set demand = rec.demand_during_lead_time|default(0) %}
+                                {% if demand is number %}
+                                    {{ demand|round(1) }} шт.
+                                {% else %}
+                                    {{ demand|float|round(1) }} шт.
+                                {% endif %}
+                            </td>
+
+                            <!-- Дата исчерпания -->
+                            <td>
+                                {% if rec.expected_stockout_date and rec.expected_stockout_date != 'Нет данных' %}
+                                    {% set date_str = rec.expected_stockout_date|string %}
+                                    {% if '00:00:00' in date_str %}
+                                        {{ date_str|replace('00:00:00', '')|trim }}
+                                    {% elif ' 00:00:00' in date_str %}
+                                        {{ date_str|replace(' 00:00:00', '')|trim }}
+                                    {% else %}
+                                        {{ date_str }}
+                                    {% endif %}
+                                {% else %}
+                                    Более 14 дней
+                                {% endif %}
+                            </td>
+
+                            <!-- Рекомендуемый заказ -->
+                            <td>
+                                {% set recommended_qty = rec.recommended_quantity|default(0) %}
+                                <strong class="
+                                    {% if rec.status == 'КРИТИЧЕСКИЙ ДЕФИЦИТ' %}priority-high
+                                    {% elif rec.status == 'НИЖЕ ТОЧКИ ЗАКАЗА' %}priority-medium
+                                    {% else %}priority-normal{% endif %}">
+                                    {% if recommended_qty is number %}
+                                        {{ recommended_qty|round|int }} шт.
+                                    {% else %}
+                                        {{ recommended_qty|float|round|int }} шт.
+                                    {% endif %}
+                                </strong>
+                            </td>
+
+                            <!-- Статус -->
+                            <td>
+                                <span class="
+                                    {% if rec.status == 'КРИТИЧЕСКИЙ ДЕФИЦИТ' %}priority-high
+                                    {% elif rec.status == 'НИЖЕ ТОЧКИ ЗАКАЗА' %}priority-medium
+                                    {% else %}priority-normal{% endif %}">
+                                    {{ rec.status }}
+                                </span>
+                            </td>
+
+                            <!-- Приоритет -->
+                            <td>
+                                {% if rec.priority == 'HIGH' %}
+                                    <span class="priority-high">ВЫСОКИЙ</span>
+                                {% elif rec.priority == 'MEDIUM' %}
+                                    <span class="priority-medium">СРЕДНИЙ</span>
+                                {% else %}
+                                    <span class="priority-normal">НОРМАЛЬНЫЙ</span>
+                                {% endif %}
+                            </td>
+
+                            <!-- Обоснование -->
+                            <td>{{ rec.reason }}</td>
+
+                            <!-- Действие -->
+                            <td>
+                                {% set recommended_qty = rec.recommended_quantity|default(0) %}
+                                {% if recommended_qty|float > 0 %}
+                                    <button class="action-btn btn-order" onclick="createOrder('{{ rec.SKU }}', {{ recommended_qty|float|round|int }})">
+                                        Заказать
+                                    </button>
+                                {% else %}
+                                    <button class="action-btn btn-skip" onclick="skipRecommendation('{{ rec.SKU }}')">
+                                        Пропустить
+                                    </button>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    {% else %}
+                        <tr>
+                            <td colspan="10" style="text-align: center; padding: 40px;">
+                                <i class="fas fa-info-circle" style="color: var(--secondary); font-size: 32px; margin-bottom: 15px; display: block;"></i>
+                                <p style="font-size: 16px; margin-bottom: 10px; color: var(--dark);">Нет рекомендаций для отображения</p>
+                                <p style="font-size: 14px; color: var(--text-light);">Проверьте наличие данных в системе или попробуйте обновить данные</p>
+                            </td>
+                        </tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Простой график для демонстрации
+        const ctx = document.getElementById('forecastChart');
+        if (ctx) {
+            const forecastChart = new Chart(ctx.getContext('2d'), {
+                type: 'line',
+                data: {
+                    labels: ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'],
+                    datasets: [{
+                        label: 'Прогноз спроса',
+                        data: [65, 59, 80, 81, 56, 55, 40],
+                        borderColor: 'rgb(75, 192, 192)',
+                        backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                        tension: 0.4
+                    }, {
+                        label: 'Прогноз остатков',
+                        data: [28, 48, 40, 19, 86, 27, 90],
+                        borderColor: 'rgb(255, 99, 132)',
+                        backgroundColor: 'rgba(255, 99, 132, 0.2)',
+                        tension: 0.4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: {
+                            position: 'top',
+                        },
+                        title: {
+                            display: true,
+                            text: 'Прогноз на неделю'
+                        }
+                    }
+                }
+            });
+        }
+    });
+
+    function refreshData() {
+        const btn = event.target.closest('button');
+        const originalText = btn.innerHTML;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Обновление...';
+        btn.disabled = true;
+
+        setTimeout(() => {
+            location.reload();
+        }, 1000);
+    }
+
+    function refreshRecommendations() {
+        const btn = event.target.closest('button');
+        const originalText = btn.innerHTML;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Пересчет...';
+        btn.disabled = true;
+
+        fetch('/api/refresh_recommendations')
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    location.reload();
+                } else {
+                    alert('Ошибка при обновлении рекомендаций');
+                    btn.innerHTML = originalText;
+                    btn.disabled = false;
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Ошибка при обновлении рекомендаций');
+                btn.innerHTML = originalText;
+                btn.disabled = false;
+            });
+    }
+
+    function createOrder(sku, quantity) {
+        if (confirm(`Создать заказ для товара ${sku} на ${quantity} шт.?`)) {
+            // Здесь можно добавить AJAX запрос для создания заказа
+            fetch('/api/create_order', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    sku: sku,
+                    quantity: quantity
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert(`Заказ для ${sku} успешно создан!`);
+                    // Обновляем страницу через 1 секунду
+                    setTimeout(() => {
+                        location.reload();
+                    }, 1000);
+                } else {
+                    alert(`Ошибка: ${data.error || 'Неизвестная ошибка'}`);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Ошибка при создании заказа');
+            });
+        }
+    }
+
+    function skipRecommendation(sku) {
+        if (confirm(`Пропустить рекомендацию для товара ${sku}?`)) {
+            // Здесь можно добавить логику отметки как пропущенной
+            alert(`Рекомендация для ${sku} отмечена как пропущенная`);
+            // Можно обновить строку в таблице
+            const row = event.target.closest('tr');
+            row.style.opacity = '0.6';
+            row.style.textDecoration = 'line-through';
+            event.target.disabled = true;
+            event.target.textContent = 'Пропущено';
+        }
+    }
+
+    function exportToExcel() {
+        const btn = event.target.closest('button');
+        const originalText = btn.innerHTML;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Экспорт...';
+
+        // Имитация экспорта
+        setTimeout(() => {
+            alert('Экспорт в Excel выполнен успешно! Файл скачан.');
+            btn.innerHTML = originalText;
+        }, 1500);
+    }
+
+    function clearCache() {
+        if (confirm('Очистить кэш рекомендаций?')) {
+            fetch('/api/clear_cache')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        alert('Кэш очищен. Страница будет перезагружена.');
+                        setTimeout(() => {
+                            location.reload();
+                        }, 1000);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('Ошибка при очистке кэша');
+                });
+        }
+    }
+</script>
+{% endblock %}

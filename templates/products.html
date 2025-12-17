@@ -1,0 +1,119 @@
+{% extends "base.html" %}
+
+{% block title %}Товары - Smart Restock{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/products.css') }}">
+{% endblock %}
+
+{% block content %}
+<div class="products-container">
+    <!-- Заголовок -->
+    <div class="products-header">
+        <div class="page-title">
+            <h1><i class="fas fa-boxes"></i> Управление товарами</h1>
+        </div>
+        <div class="header-actions">
+            <button class="btn btn-primary">
+                <i class="fas fa-plus"></i> Добавить товар
+            </button>
+        </div>
+    </div>
+
+    <!-- Поиск -->
+    <div class="products-toolbar">
+        <div class="search-box">
+            <input type="text" class="search-input" placeholder="Поиск по названию или коду..." id="searchInput">
+            <button class="btn btn-primary search-btn">
+                <i class="fas fa-search"></i>
+            </button>
+        </div>
+        <div class="products-count">
+            <span>Всего товаров: {{ total_products }}</span>
+        </div>
+    </div>
+
+    <!-- Простая таблица без сложных расчетов -->
+    {% if products %}
+    <div class="table-container">
+        <table class="products-table">
+            <thead>
+                <tr>
+                    <th>Код</th>
+                    <th>Название</th>
+                    <th>Артикул</th>
+                    <th>Ед. изм.</th>
+                    <th>НДС</th>
+                    <th>Тип</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for product in products %}
+                <tr>
+                    <td><code>{{ product.code or '—' }}</code></td>
+                    <td><strong>{{ product.descr or 'Без названия' }}</strong></td>
+                    <td>{{ product.article or '—' }}</td>
+                    <td>{{ product.measure or 'шт.' }}</td>
+                    <td>
+                        {% if product.nds_rate %}
+                            {{ product.nds_rate }}%
+                        {% else %}
+                            0%
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if product.is_folder %}
+                            <span class="type-badge folder"><i class="fas fa-folder"></i> Папка</span>
+                        {% else %}
+                            <span class="type-badge product"><i class="fas fa-box"></i> Товар</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Итоги -->
+    <div class="table-footer">
+        <div class="summary-info">
+            <strong>Показано товаров:</strong> {{ products|length }}
+        </div>
+    </div>
+
+    {% else %}
+    <!-- Сообщение, если нет товаров -->
+    <div class="no-products">
+        <i class="fas fa-box-open"></i>
+        <h3>Нет товаров в базе данных</h3>
+        <p>Таблица products пустая или произошла ошибка подключения</p>
+        <div style="margin-top: 20px;">
+            <button class="btn btn-primary">
+                <i class="fas fa-plus"></i> Добавить тестовый товар
+            </button>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Простой поиск
+document.getElementById('searchInput').addEventListener('keyup', function() {
+    const searchTerm = this.value.toLowerCase();
+    const rows = document.querySelectorAll('.products-table tbody tr');
+
+    rows.forEach(row => {
+        const code = row.cells[0].textContent.toLowerCase();
+        const name = row.cells[1].textContent.toLowerCase();
+
+        if (code.includes(searchTerm) || name.includes(searchTerm) || searchTerm === '') {
+            row.style.display = '';
+        } else {
+            row.style.display = 'none';
+        }
+    });
+});
+</script>
+{% endblock %}

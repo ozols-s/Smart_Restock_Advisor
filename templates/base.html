@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Smart Restock Advisor{% endblock %}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    {% block extra_css %}{% endblock %}
+</head>
+<body>
+    <!-- Сайдбар -->
+    <aside class="sidebar">
+        <div class="sidebar-header">
+            <h2>Smart Restock</h2>
+        </div>
+        <nav class="sidebar-menu">
+            <ul>
+                <li {% if request.endpoint == 'index' %}class="active"{% endif %}>
+                    <a href="{{ url_for('index') }}">
+                        <i class="fas fa-home"></i>
+                        <span>Главная</span>
+                    </a>
+                </li>
+                <li {% if request.endpoint == 'analytics' %}class="active"{% endif %}>
+                    <a href="{{ url_for('analytics') }}">
+                        <i class="fas fa-chart-line"></i>
+                        <span>Аналитика</span>
+                    </a>
+                </li>
+                <li {% if request.endpoint == 'products' %}class="active"{% endif %}>
+                    <a href="{{ url_for('products') }}">
+                        <i class="fas fa-boxes"></i>
+                        <span>Товары</span>
+                    </a>
+                </li>
+                <li {% if request.endpoint == 'orders' %}class="active"{% endif %}>
+                    <a href="{{ url_for('orders') }}">
+                        <i class="fas fa-file-invoice"></i>
+                        <span>Заказы</span>
+                    </a>
+                </li>
+                <li {% if request.endpoint == 'suppliers' %}class="active"{% endif %}>
+                    <a href="{{ url_for('suppliers') }}">
+                        <i class="fas fa-truck"></i>
+                        <span>Поставщики</span>
+                    </a>
+                </li>
+            </ul>
+        </nav>
+    </aside>
+
+    <!-- Основной контент -->
+    <main class="main-content">
+        {% block content %}{% endblock %}
+    </main>
+
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+    {% block extra_js %}{% endblock %}
+</body>
+</html>
