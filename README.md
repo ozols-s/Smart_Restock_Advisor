@@ -6,7 +6,6 @@
 
 ### Предварительные требования:
 - [Docker](https://docs.docker.com/get-docker/)
-- [Docker Compose](https://docs.docker.com/compose/install/)
 
 ### Запуск проекта:
 
