@@ -10,7 +10,8 @@
 ### Запуск проекта:
 
 # 1. Клонировать репозиторий
-git clone https://github.com/ваш-логин/smart_restock_advisor.git
+git clone https://github.com/ozols-s/smart_restock_advisor.git
+
 cd smart_restock_advisor
 
 # 2. Запустить проект (автоматически установит всё)
